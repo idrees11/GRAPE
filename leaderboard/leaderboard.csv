@@ -1,3 +1,2 @@
 timestamp_utc,team,model,score,notes
 2026-02-04T17:30:00Z,baseline,GrapeGAT,0.830,3-layer GAT with multi-head attention and graph features
-2026-02-14T21:17:43Z,DL-ENGINEER-TEAM,,0.659091,
