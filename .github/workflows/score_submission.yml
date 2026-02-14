@@ -80,8 +80,8 @@ jobs:
           AUC="${{ steps.eval.outputs.auc }}"
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-          # Append to leaderboard CSV
-          echo "${TIMESTAMP},${TEAM},,${F1},AUROC=${AUC}" >> leaderboard/leaderboard.csv
+          # Append to leaderboard CSV (columns: timestamp_utc,team,model,score,notes)
+          echo "${TIMESTAMP},${TEAM},,${F1}," >> leaderboard/leaderboard.csv
 
           # Render leaderboard markdown
           python competition/render_leaderboard.py
@@ -105,5 +105,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## ✅ Submission Scored Successfully\n\n| Metric | Score |\n|--------|-------|\n| **Macro F1** | ${{ steps.eval.outputs.f1 }} |\n| **AUROC** | ${{ steps.eval.outputs.auc }} |\n\nThe leaderboard has been updated. You may now close this PR.`
+              body: `## ✅ Submission Scored Successfully\n\n| Metric | Score |\n|--------|-------|\n| **Macro F1** (leaderboard) | ${{ steps.eval.outputs.f1 }} |\n| **AUROC** | ${{ steps.eval.outputs.auc }} |\n\n🏆 The leaderboard has been updated. You may now close this PR.`
             })
