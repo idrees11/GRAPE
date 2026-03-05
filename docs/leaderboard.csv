@@ -1,3 +1,4 @@
 timestamp_utc,team,model,type,score,notes
 2026-03-03T08:40:26Z,faranbutt,,,0.829545,
 2026-03-04T14:35:23Z,Maha,,human,0.400000,this was hard
+2026-03-05T21:58:22Z,DL-ENGINEER-TEAM,VesselGCN,human,0.659091,3-layer GCN with skip connections
