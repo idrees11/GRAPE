@@ -50,7 +50,7 @@ jobs:
           TEAM=$(echo "$ENC" | sed 's|submissions/inbox/||' | cut -d'/' -f1)
           # If team is just the filename (no subfolder), derive from PR branch
           if [[ "$TEAM" == *.enc ]]; then
-            TEAM=$(echo "${{ github.head_ref }}" | sed 's|submission/||')
+            TEAM=$(echo "${{ github.head_ref }}" | sed 's|submission/||' | sed 's|inbox/||' | sed 's|/.*||')
           fi
           python encryption/decrypt.py "$ENC" /tmp/predictions.csv
           echo "name=$TEAM" >> "$GITHUB_OUTPUT"
