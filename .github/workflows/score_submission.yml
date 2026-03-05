@@ -91,13 +91,20 @@ jobs:
             cat "$META"
             MODEL=$(awk -F': ' '/^[Mm]odel:/{print $2}' "$META" | head -1 | tr ',' ' ' | xargs)
             NOTES=$(awk -F': ' '/^[Nn]otes:/{print $2}' "$META" | head -1 | tr ',' ' ' | xargs)
+            TYPE=$(awk -F': ' '/^[Tt]ype:/{print $2}' "$META" | head -1 | tr ',' ' ' | xargs)
             echo "Parsed MODEL=$MODEL"
             echo "Parsed NOTES=$NOTES"
+            echo "Parsed TYPE=$TYPE"
           else
             echo "No meta.yaml found anywhere in submissions/inbox/"
           fi
+          # Default type to human if not specified
+          if [ -z "$TYPE" ]; then
+            TYPE="human"
+          fi
           echo "model=$MODEL" >> "$GITHUB_OUTPUT"
           echo "notes=$NOTES" >> "$GITHUB_OUTPUT"
+          echo "type=$TYPE" >> "$GITHUB_OUTPUT"
 
       - name: Update leaderboard
         run: |
@@ -106,10 +113,17 @@ jobs:
           AUC="${{ steps.eval.outputs.auc }}"
           MODEL="${{ steps.meta.outputs.model }}"
           NOTES="${{ steps.meta.outputs.notes }}"
+          TYPE="${{ steps.meta.outputs.type }}"
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-          # Append to leaderboard CSV (columns: timestamp_utc,team,model,score,notes)
-          echo "${TIMESTAMP},${TEAM},${MODEL},${F1},${NOTES}" >> leaderboard/leaderboard.csv
+          # Validate type value
+          if [ -n "$TYPE" ] && [ "$TYPE" != "human" ] && [ "$TYPE" != "llm" ] && [ "$TYPE" != "human+llm" ]; then
+            echo "::warning::Invalid type '$TYPE'. Must be human, llm, or human+llm. Defaulting to human."
+            TYPE="human"
+          fi
+
+          # Append to leaderboard CSV (columns: timestamp_utc,team,model,type,score,notes)
+          echo "${TIMESTAMP},${TEAM},${MODEL},${TYPE},${F1},${NOTES}" >> leaderboard/leaderboard.csv
 
           # Render leaderboard markdown
           python competition/render_leaderboard.py
@@ -133,5 +147,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## ✅ Submission Scored Successfully\n\n| Metric | Score |\n|--------|-------|\n| **Macro F1** (leaderboard) | ${{ steps.eval.outputs.f1 }} |\n| **AUROC** | ${{ steps.eval.outputs.auc }} |\n| **Model** | ${{ steps.meta.outputs.model || 'not specified' }} |\n\n🏆 The leaderboard has been updated. You may now close this PR.`
+              body: `## ✅ Submission Scored Successfully\n\n| Metric | Score |\n|--------|-------|\n| **Macro F1** (leaderboard) | ${{ steps.eval.outputs.f1 }} |\n| **AUROC** | ${{ steps.eval.outputs.auc }} |\n| **Model** | ${{ steps.meta.outputs.model || 'not specified' }} |\n| **Type** | ${{ steps.meta.outputs.type || 'not specified' }} |\n\n🏆 The leaderboard has been updated. You may now close this PR.`
             })

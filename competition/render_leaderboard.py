@@ -34,8 +34,8 @@ def main():
   lines.append("This leaderboard is **auto-updated** when a submission PR is merged. ")
   lines.append("For interactive search and filters, enable GitHub Pages and open **/docs/leaderboard.html**.\n\n")
 
-  lines.append("| Rank | Team | Model | Score | Date (UTC) | Notes |\n")
-  lines.append("|---:|---|---|---:|---|---|\n")
+  lines.append("| Rank | Team | Model | Type | Score | Date (UTC) | Notes |\n")
+  lines.append("|---:|---|---|---|---:|---|---|\n")
   rank = 1
   for i, r in enumerate(rows):
     if i > 0:
@@ -45,11 +45,14 @@ def main():
         rank = i + 1
     team = (r.get("team") or "").strip()
     model = (r.get("model") or "").strip()
+    stype = (r.get("type") or "").strip()
     score = (r.get("score") or "").strip()
     ts = (r.get("timestamp_utc") or "").strip()
     notes = (r.get("notes") or "").strip()
-    model_disp = f"`{model}`" if model else ""
-    lines.append(f"| {rank} | {team} | {model_disp} | {score} | {ts} | {notes} |\n")
+    model_disp = f"`{model}`" if model else "-"
+    type_disp = f"`{stype}`" if stype else "-"
+    notes_disp = notes if notes else "-"
+    lines.append(f"| {rank} | {team} | {model_disp} | {type_disp} | {score} | {ts} | {notes_disp} |\n")
 
   MD_PATH.write_text("".join(lines), encoding="utf-8")
 
