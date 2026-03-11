@@ -3,3 +3,4 @@ timestamp_utc,team,model,type,score,notes
 2026-03-04T14:35:23Z,Maha,,human,0.400000,this was hard
 2026-03-07T17:24:29Z,main,DAGNet,human,0.761905,Domain-Adversarial Graph Neural Network (DANN-GNN) for diabetic retinopathy detection on retinal vessel graphs.
 2026-03-08T18:06:22Z,peguy_team,GCN_degree,human,0.829545,3-layer GCN with node degree feature and global mean/max/sum pooling
+2026-03-11T19:49:15Z,samuel,GIN,human,0.829545,GCN and GIN layers
