@@ -1,6 +1,6 @@
 import csv
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parents[1]
 CSV_PATH = ROOT / "leaderboard" / "leaderboard.csv"
@@ -23,9 +23,13 @@ def main():
       return float("-inf")
   def ts_key(r):
     try:
-      return datetime.fromisoformat(r.get("timestamp_utc","").replace("Z","+00:00"))
+      ts = (r.get("timestamp_utc", "") or "").strip()
+      dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+      if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+      return dt
     except:
-      return datetime.fromtimestamp(0)
+      return datetime.fromtimestamp(0, tz=timezone.utc)
 
   rows.sort(key=lambda r: (score_key(r), ts_key(r)), reverse=True)
 

@@ -97,6 +97,7 @@ jobs:
             MODEL=$(awk -F': ' '/^[Mm]odel:/{print $2}' "$META" | head -1 | tr ',' ' ' | xargs)
             NOTES=$(awk -F': ' '/^[Nn]otes:/{print $2}' "$META" | head -1 | tr ',' ' ' | xargs)
             TYPE=$(awk -F': ' '/^[Tt]ype:/{print $2}' "$META" | head -1 | tr ',' ' ' | xargs)
+            TYPE=$(echo "$TYPE" | tr -d '\r\n' | xargs)
             echo "Parsed MODEL=$MODEL"
             echo "Parsed NOTES=$NOTES"
             echo "Parsed TYPE=$TYPE"
