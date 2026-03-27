@@ -1,7 +1,8 @@
 import torch
 import torch.nn.functional as F
 from torch_geometric.nn import GATConv, global_mean_pool, global_max_pool, global_add_pool
-from torch_geometric.data import Data, DataLoader
+from torch_geometric.data import Data
+from torch_geometric.loader import DataLoader
 import pandas as pd
 import numpy as np
 
@@ -9,7 +10,7 @@ import numpy as np
 # Model
 # -------------------------------
 class GrapeGAT(torch.nn.Module):
-    def __init__(self, in_dim, hid=64, out=2, heads=4, dropout=0.3):
+    def __init__(self, in_dim, hid=128, out=2, heads=4, dropout=0.3):
         super().__init__()
         self.dropout = dropout
 
@@ -38,6 +39,7 @@ class GrapeGAT(torch.nn.Module):
         x_max = global_max_pool(x, batch)
         x_add = global_add_pool(x, batch)
 
+        # CORRECT CONCAT
         x = torch.cat([x_mean, x_max, x_add, graph_feats], dim=1)
 
         x = F.dropout(x, p=self.dropout, training=self.training)
@@ -48,7 +50,7 @@ class GrapeGAT(torch.nn.Module):
 
 
 # -------------------------------
-# Graph Feature Engineering
+# Graph Features
 # -------------------------------
 def compute_graph_features(g, edges):
     num_nodes = len(g)
@@ -59,8 +61,6 @@ def compute_graph_features(g, edges):
         degree[e[0]] += 1
 
     avg_degree = degree.mean() if num_nodes > 0 else 0
-    max_degree = degree.max() if num_nodes > 0 else 0
-
     junction_ratio = (g['type'] == 'junction').mean() if 'type' in g.columns else 0
     avg_width = g['width'].mean() if 'width' in g.columns else 0
 
@@ -74,7 +74,7 @@ def compute_graph_features(g, edges):
 
 
 # -------------------------------
-# Data Loader
+# Load Graphs
 # -------------------------------
 def load_graphs(graph_path, label_path=None):
     df = pd.read_csv(graph_path)
@@ -117,7 +117,9 @@ def load_graphs(graph_path, label_path=None):
 
         data = Data(x=x, edge_index=edge_index, y=y)
         data.gid = gid
-        data.graph_feats = torch.tensor(graph_feats, dtype=torch.float)
+
+        # ✅ FIXED SHAPE
+        data.graph_feats = torch.tensor(graph_feats, dtype=torch.float).unsqueeze(0)
 
         graphs.append(data)
 
@@ -132,14 +134,9 @@ def train():
 
     graphs = load_graphs('data/public/train_data.csv', 'data/public/train_labels.csv')
 
-    np.random.seed(42)
-    indices = np.random.permutation(len(graphs))
-    val_size = int(0.2 * len(graphs))
-
-    val_idx, train_idx = indices[:val_size], indices[val_size:]
-
-    train_graphs = [graphs[i] for i in train_idx]
-    val_graphs = [graphs[i] for i in val_idx]
+    # Use MOST data for training (small dataset)
+    train_graphs = graphs[:-5]
+    val_graphs = graphs[-5:]
 
     print(f"Train: {len(train_graphs)}, Val: {len(val_graphs)}")
 
@@ -151,31 +148,32 @@ def train():
     class_weights = class_weights.to(device)
 
     train_loader = DataLoader(train_graphs, batch_size=16, shuffle=True)
-    val_loader = DataLoader(val_graphs, batch_size=16, shuffle=False)
+    val_loader = DataLoader(val_graphs, batch_size=16)
 
     model = GrapeGAT(in_dim=4).to(device)
 
     opt = torch.optim.AdamW(model.parameters(), lr=0.001, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=200)
 
-    scaler = torch.cuda.amp.GradScaler()
+    use_amp = torch.cuda.is_available()
+    scaler = torch.amp.GradScaler(enabled=use_amp)
 
     best_val_acc = 0
-    patience = 30
+    patience = 50
     patience_counter = 0
     best_model_state = None
 
-    for ep in range(300):
+    for ep in range(500):
         model.train()
         total_loss, correct, total = 0, 0, 0
 
         for batch in train_loader:
             batch = batch.to(device)
-            graph_feats = batch.graph_feats.view(len(batch.y), -1)
+            graph_feats = batch.graph_feats  # ✅ FIXED
 
             opt.zero_grad()
 
-            with torch.cuda.amp.autocast():
+            with torch.amp.autocast(device_type='cuda', enabled=use_amp):
                 out = model(batch.x, batch.edge_index, batch.batch, graph_feats)
                 loss = F.cross_entropy(out, batch.y, weight=class_weights, label_smoothing=0.1)
 
@@ -198,7 +196,7 @@ def train():
         with torch.no_grad():
             for batch in val_loader:
                 batch = batch.to(device)
-                graph_feats = batch.graph_feats.view(len(batch.y), -1)
+                graph_feats = batch.graph_feats
 
                 out = model(batch.x, batch.edge_index, batch.batch, graph_feats)
                 pred = out.argmax(dim=1)
@@ -243,7 +241,7 @@ def predict(model, graph_path, out_path):
     with torch.no_grad():
         for batch in loader:
             batch = batch.to(device)
-            graph_feats = batch.graph_feats.view(len(batch.graph_feats), -1)
+            graph_feats = batch.graph_feats  # ✅ FIXED
 
             out = model(batch.x, batch.edge_index, batch.batch, graph_feats)
             pred = out.argmax(dim=1).cpu().numpy()
